@@ -1,10 +1,10 @@
 # real-time-pothole-detection
-Pothole detection from real time video stream or images with Python.
+Pothole detection from real time video stream or images with Python. And also print location data and longitude and lattiude in a excel file. If any assistance needed feel fre to connect my using issues section in github 
 
 YoloV4-Tiny and OpenCV used for this project.
 - Clone the repository.
 ```
-git clone https://github.com/noorkhokhar99/pothole-detection.git
+git clone https://github.com/farhan123mohd/pothole-detection.git
 ```
 - Goto the cloned folder.
 ```
@@ -17,7 +17,8 @@ pip install --upgrade pip
 ```
 - Install requirements with mentioned command below.
 ```
-pip install -r requirements.txt
+pip install pip install opencv-python
+pip install geocoder
 ```
 - Run the code with mentioned command below.
 
