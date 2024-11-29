@@ -1,91 +1,132 @@
-#importing necessary libraries
 import cv2 as cv
+
 import time
-import geocoder
+
 import os
 
-#reading label name from obj.names file
+
+
+# Read label names from obj.names file
+
 class_name = []
+
 with open(os.path.join("project_files", 'obj.names'), 'r') as f:
+
     class_name = [cname.strip() for cname in f.readlines()]
 
-#importing model weights and config file
-#defining the model parameters
-net1 = cv.dnn.readNet('project_files/yolov4_tiny.weights', 'project_files/yolov4_tiny.cfg')
-net1.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
-net1.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA_FP16)
-model1 = cv.dnn_DetectionModel(net1)
-model1.setInputParams(size=(640, 480), scale=1/255, swapRB=True)
 
-#defining the video source (0 for the default camera)
-cap = cv.VideoCapture(0)  # Change to 0 for the default webcam
-width = int(cap.get(3))
-height = int(cap.get(4))
+
+# Load YOLOv4 Tiny model
+
+net1 = cv.dnn.readNet('project_files/yolov4_tiny.weights', 'project_files/yolov4_tiny.cfg')
+
+net1.setPreferableBackend(cv.dnn.DNN_BACKEND_CUDA)
+
+net1.setPreferableTarget(cv.dnn.DNN_TARGET_CUDA_FP16)  # Use CUDA FP16 for speed
+
+model1 = cv.dnn_DetectionModel(net1)
+
+model1.setInputParams(size=(416, 416), scale=1/255, swapRB=True)  # Use 416x416 for faster processing
+
+
+
+# Initialize webcam
+
+cap = cv.VideoCapture(0)
+
+cap.set(cv.CAP_PROP_FRAME_WIDTH, 640)   # Set low resolution for speed
+
+cap.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
+
+cap.set(cv.CAP_PROP_FPS, 60)           # Request a higher frame rate from the camera
+
+
 
 # Check if the webcam is opened correctly
-if not cap.isOpened() or width == 0 or height == 0:
+
+if not cap.isOpened():
+
     print("Error: Unable to access the webcam.")
+
     exit()
 
-#defining parameters for result saving and get coordinates
-g = geocoder.ip('me')
-result_path = "pothole_coordinates"
-if not os.path.exists(result_path):
-    os.makedirs(result_path)
+
+
+# Start detection
+
+frame_counter = 0
 
 starting_time = time.time()
-Conf_threshold = 0.5
-NMS_threshold = 0.4
-frame_counter = 0
-i = 0
-b = 0
 
-#detection loop
+
+
 while True:
+
     ret, frame = cap.read()
-    frame_counter += 1
+
     if not ret:
+
         break
 
-    # analysis the stream with detection model
-    classes, scores, boxes = model1.detect(frame, Conf_threshold, NMS_threshold)
+
+
+    frame_counter += 1
+
+
+
+    # Downscale the frame for processing
+
+    resized_frame = cv.resize(frame, (416, 416))  # YOLOv4-Tiny input size
+
+
+
+    # Run detection
+
+    classes, scores, boxes = model1.detect(resized_frame, confThreshold=0.5, nmsThreshold=0.4)
+
+
+
+    # Draw boxes (optional: comment this out for even higher FPS)
+
     for (classid, score, box) in zip(classes, scores, boxes):
-        label = "pothole"
+
+        label = f"{class_name[classid[0]]}: {round(score[0] * 100, 2)}%"
+
         x, y, w, h = box
-        recarea = w * h
-        area = width * height
 
-        # drawing detection boxes on frame for detected potholes and saving coordinates
-        if len(scores) != 0 and scores[0] >= 0.7:
-            if (recarea / area) <= 0.1 and box[1] < 600:
-                cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 1)
-                cv.putText(frame, "%" + str(round(scores[0] * 100, 2)) + " " + label,
-                           (box[0], box[1] - 10), cv.FONT_HERSHEY_COMPLEX, 0.5, (255, 0, 0), 1)
-                if i == 0:
-                    cv.imwrite(os.path.join(result_path, 'pothole' + str(i) + '.jpg'), frame)
-                    with open(os.path.join(result_path, 'pothole' + str(i) + '.txt'), 'w') as f:
-                        f.write(str(g.latlng))
-                        i += 1
-                if i != 0 and (time.time() - b) >= 2:
-                    cv.imwrite(os.path.join(result_path, 'pothole' + str(i) + '.jpg'), frame)
-                    with open(os.path.join(result_path, 'pothole' + str(i) + '.txt'), 'w') as f:
-                        f.write(str(g.latlng))
-                    b = time.time()
-                    i += 1
+        cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-    # writing FPS on frame
-    endingTime = time.time() - starting_time
-    fps = frame_counter / endingTime
-    cv.putText(frame, f'FPS: {fps:.2f}', (20, 50),
-               cv.FONT_HERSHEY_COMPLEX, 0.7, (0, 255, 0), 2)
+        cv.putText(frame, label, (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-    # showing the frame
-    cv.imshow('Live Detection', frame)
 
-    # exit on pressing 'q'
+
+    # Calculate and display FPS
+
+    elapsed_time = time.time() - starting_time
+
+    fps = frame_counter / elapsed_time
+
+    cv.putText(frame, f"FPS: {fps:.2f}", (20, 50), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+
+
+
+    # Show the frame
+
+    cv.imshow("Pothole Detection", frame)
+
+
+
+    # Exit on 'q'
+
     if cv.waitKey(1) & 0xFF == ord('q'):
+
         break
 
-#end
+
+
+# Release resources
+
 cap.release()
+
 cv.destroyAllWindows()
+
