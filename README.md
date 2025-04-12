@@ -1,4 +1,4 @@
-```markdown
+
 # 🚧 Real-Time Pothole Detection using YOLOv4-Tiny & OpenCV 🚗
 
 Detect potholes from **real-time video stream or images** using Python. Also prints GPS location (latitude & longitude) and logs all detections into a `.csv` (Excel-readable) file.
@@ -89,5 +89,5 @@ If you face any issues or want to contribute:
 ## 🧠 Credits
 
 Made with ❤️ using Python, YOLOv4-Tiny, and OpenCV.
-```
+
 
